@@ -1,6 +1,18 @@
 # offlinemusicheckyeah
 Single file HTML doc with support for offline playback of songs.
 
+## Features
+- Play, pause, skip
+- Change volume
+- Scrubbing
+- Playlists w/ drag sand drop adding
+### Planned to add
+- Last track
+- Removing from playlists
+- Deleting playlists
+- Shuffle
+- Playlist embedding
+
 ## Usage
 ### Setup
 1. Download .html file from releases tab
