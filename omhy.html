@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OMHY</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+:root {
+  color-scheme: light dark;
+  --accent-color: #2979FF;
+  --accent-hover: #3D5AFE;
+  --dark-bg-primary: #121212;
+  --dark-bg-secondary: #1E1E1E;
+  --dark-text-primary: #E0E0E0;
+  --dark-text-secondary: #B0B0B0;
+  --dark-border: #2C2C2C;
+  --light-bg-primary: #FAFAFA;
+  --light-bg-secondary: #F0F0F0;
+  --light-text-primary: #212121;
+  --light-text-secondary: #757575;
+  --light-border: #E0E0E0;
+}
+
+html,body{
+  margin:0;
+  font-family:"Roboto",sans-serif;
+  background-color: light-dark(var(--light-bg-primary), var(--dark-bg-primary));
+  color: light-dark(var(--light-text-primary), var(--dark-text-primary));
+}
+
+#topnav{
+  height:8vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-bottom:2px solid light-dark(var(--light-border), var(--dark-border));
+}
+
+#flexContainer{display:flex;height:92vh;overflow:hidden;}
+
+.sidebar{
+  flex:1;
+  background-color: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:0.5rem;
+  overflow-y:auto;
+  border-image: linear-gradient(to bottom, light-dark(var(--light-border), var(--dark-border)) 0%, light-dark(var(--accent-color), var(--accent-hover)) 100%) 1;
+}
+
+#playlistList{border-right:5px solid transparent;}
+#playerSidebar{border-left:5px solid transparent;}
+
+button.playlistBtn{
+  cursor:pointer;
+  width:95%;
+  background:none;
+  border:none;
+  color: light-dark(var(--light-text-primary), var(--dark-text-primary));
+  padding:10px;
+  border-radius:5px;
+  text-align:left;
+  margin-bottom:0.3rem;
+  transition:0.2s;
+}
+button.playlistBtn:hover{
+  background-color: light-dark(var(--accent-color), var(--accent-hover));
+  color: light-dark(var(--dark-text-primary), var(--light-text-primary));
+}
+
+#mainContent{flex:3;margin:0.5rem 1rem;overflow-y:auto;}
+#mainList button.trackBtn{
+  cursor:pointer;
+  background-color: light-dark(var(--light-bg-primary), var(--dark-bg-primary));
+  border:none;
+  border-radius:5px;
+  color: light-dark(var(--light-text-primary), var(--dark-text-primary));
+  padding:10px;
+  width:100%;
+  text-align:left;
+  transition:0.3s;
+  margin-bottom:0.3rem;
+}
+#mainList button.trackBtn:hover{
+  background-color: light-dark(var(--accent-color), var(--accent-hover));
+  color: light-dark(var(--dark-text-primary), var(--light-text-primary));
+}
+
+#player{display:flex;flex-direction:column;align-items:center;gap:1rem;width:90%;margin-top:1rem;}
+#trackControlWrapper button{cursor:pointer;border-radius:50%;width:2.5rem;height:2.5rem;background-color: light-dark(var(--accent-color), var(--accent-hover));color:white;border:none;font-size:1rem;}
+#progressWrapper{width:100%;display:flex;flex-direction:column;align-items:center;}
+#progressWrapper input[type="range"]{width:100%;}
+#progressWrapper div{display:flex;justify-content:space-between;width:100%;}
+#upnext{width:90%;margin-top:1rem;}
+#upnext ul{list-style:none;padding-left:0;}
+#upnext li{padding:5px;background: light-dark(var(--light-bg-primary), var(--dark-bg-primary));margin-bottom:2px;border-radius:3px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;}
+#upnext li:hover{background: light-dark(var(--accent-color), var(--accent-hover));color:white;}
+.upnextBtn{background:none;border:none;color:inherit;cursor:pointer;font-weight:bold;margin-left:5px;}
+</style>
+</head>
+<body>
+
+<div id="topnav"><h1>offlinemusicheckyeah</h1></div>
+
+<div id="flexContainer">
+  <div id="playlistList" class="sidebar">
+    <button class="playlistBtn" onclick="showPlaylist('liked')">Loaded Songs</button>
+    <button class="playlistBtn" onclick="newPlaylist()">+ New Playlist</button>
+  </div>
+
+  <div id="mainContent">
+    <h1 id="listTitle">Loaded Songs</h1>
+    <div id="mainList">No Songs Loaded... <br><br><button onclick="openLibrary()">Load songs</button></div>
+  </div>
+
+  <div id="playerSidebar" class="sidebar">
+    <div id="player">
+      <h2 id="currentTrackTitle">No Track Playing</h2>
+      <div id="trackControlWrapper">
+        <button id="previousTrackBtn">⏮</button>
+        <button id="playPauseBtn">▶</button>
+        <button id="nextTrackBtn">⏭</button>
+      </div>
+      <div id="progressWrapper">
+        <input type="range" id="progressBar" value="0" min="0" max="100">
+        <div><span id="currentTrackTime">0:00</span><span id="currentTrackDuration">0:00</span></div>
+      </div>
+      <input type="range" id="playerVolume" value="100" min="0" max="100">
+      <audio id="audioPlayer" style="display:none;"></audio>
+    </div>
+
+    <div id="upnext">
+      <h3>Up Next</h3>
+      <ul></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+let folderHandle=null;
+let library=[];
+let fileHandleMap={};
+let playlists=[];
+let currentPlaylist='liked';
+let upnext=[];
+let currentTrackIndex=-1;
+
+const audioPlayer=document.getElementById("audioPlayer");
+const playPauseBtn=document.getElementById("playPauseBtn");
+const progressBar=document.getElementById("progressBar");
+const currentTrackTime=document.getElementById("currentTrackTime");
+const currentTrackDuration=document.getElementById("currentTrackDuration");
+const playerVolume=document.getElementById("playerVolume");
+const currentTrackTitle=document.getElementById("currentTrackTitle");
+
+async function openLibrary(){
+  if(!window.showDirectoryPicker){ alert("Use Chrome/Edge."); return; }
+  document.getElementById("mainList").innerHTML="Loading songs...";
+  folderHandle=await window.showDirectoryPicker();
+  library=[];
+  fileHandleMap={};
+  await scanDir(folderHandle,"");
+  await loadPlaylists();
+  showPlaylist('liked');
+}
+
+async function scanDir(dir,path){
+  for await(const entry of dir.values()){
+    if(entry.kind==="file" && /\.(mp3|flac|wav|ogg)$/i.test(entry.name)){
+      const relativePath=path?path+"/"+entry.name:entry.name;
+      library.push({title:entry.name.replace(/\.[^/.]+$/,""), path: relativePath});
+      fileHandleMap[relativePath]=entry;
+    } else if(entry.kind==="directory"){
+      await scanDir(entry, path?path+"/"+entry.name:entry.name);
+    }
+  }
+}
+
+async function loadPlaylists(){
+  if(!folderHandle) return;
+  try{
+    const fileHandle=await folderHandle.getFileHandle("playlists.json",{create:true});
+    const file=await fileHandle.getFile();
+    const text=await file.text();
+    playlists=JSON.parse(text||"[]");
+  }catch(e){playlists=[];}
+  renderPlaylists();
+}
+
+async function savePlaylists(){
+  if(!folderHandle) return;
+  const fileHandle=await folderHandle.getFileHandle("playlists.json",{create:true});
+  const writable=await fileHandle.createWritable();
+  await writable.write(JSON.stringify(playlists,null,2));
+  await writable.close();
+}
+
+function renderPlaylists(){
+  const container=document.getElementById("playlistList");
+  container.innerHTML='<button class="playlistBtn" onclick="showPlaylist(\'liked\')">Loaded Songs</button><button class="playlistBtn" onclick="newPlaylist()">+ New Playlist</button>';
+  playlists.forEach((p,i)=>{
+    const btn=document.createElement("button");
+    btn.className="playlistBtn";
+    btn.textContent=p.name+" ("+p.tracks.length+" tracks)";
+    btn.onclick=()=>showPlaylist(i);
+    btn.ondragover=(e)=>e.preventDefault();
+    btn.ondrop=(e)=>{e.preventDefault(); const trackIndex=Number(e.dataTransfer.getData("trackIndex")); addToPlaylist(i,trackIndex);};
+    container.appendChild(btn);
+  });
+}
+
+function addToPlaylist(playlistIndex,trackIndex){
+  const track=library[trackIndex];
+  if(!playlists[playlistIndex].tracks.find(t=>t.path===track.path)){
+    playlists[playlistIndex].tracks.push({title:track.title,path:track.path});
+    savePlaylists();
+    renderPlaylists();
+  }
+}
+
+function newPlaylist(){
+  const name=prompt("Enter playlist name:");
+  if(!name) return;
+  playlists.push({name:name,tracks:[]});
+  savePlaylists();
+  renderPlaylists();
+}
+
+function showPlaylist(id){
+  if(id==='liked'){currentPlaylist='liked';renderLibrary(library);}
+  else{currentPlaylist=id;renderLibrary(playlists[id].tracks);}
+}
+
+function renderLibrary(list){
+  const container=document.getElementById("mainList");
+  container.innerHTML="";
+  list.forEach((track,i)=>{
+    const btn=document.createElement("button");
+    btn.className="trackBtn";
+    btn.textContent=track.title;
+    btn.draggable=true;
+    btn.ondragstart=(e)=>e.dataTransfer.setData("trackIndex",i);
+    btn.onclick=()=>playTrackByIndex(i,list);
+    container.appendChild(btn);
+    container.appendChild(document.createElement("br"));
+  });
+  if(list.length===0) container.innerHTML="No songs in this playlist.";
+  document.getElementById("listTitle").textContent=currentPlaylist==='liked'?"Loaded Songs":playlists[currentPlaylist].name;
+}
+
+async function playTrackByIndex(index,list){
+  const track=list[index];
+  const handle=fileHandleMap[track.path];
+  if(!handle) return alert("File not found in folder. Reload folder.");
+  const file=await handle.getFile();
+  audioPlayer.src=URL.createObjectURL(file);
+  currentTrackTitle.textContent=track.title;
+  playPauseBtn.textContent="❚❚";
+  await audioPlayer.play();
+  currentTrackIndex=index;
+  upnext=list.slice(index+1);
+  renderUpNext();
+}
+
+function renderUpNext(){
+  const ul=document.querySelector("#upnext ul");
+  ul.innerHTML="";
+  upnext.forEach((t,i)=>{
+    const li=document.createElement("li");
+    li.textContent=t.title;
+    li.draggable=true;
+    li.ondragstart=(e)=>e.dataTransfer.setData("upnextIndex",i);
+    const removeBtn=document.createElement("button");
+    removeBtn.textContent="X";
+    removeBtn.className="upnextBtn";
+    removeBtn.onclick=()=>{upnext.splice(i,1); renderUpNext();};
+    li.appendChild(removeBtn);
+    li.onclick=()=>playTrackByIndex(i,upnext);
+    ul.appendChild(li);
+  });
+  const ulEl=document.querySelector("#upnext ul");
+  ulEl.ondragover=(e)=>e.preventDefault();
+  ulEl.ondrop=(e)=>{
+    e.preventDefault();
+    const trackIndex=Number(e.dataTransfer.getData("trackIndex"));
+    const track=library[trackIndex];
+    upnext.push(track);
+    renderUpNext();
+  };
+}
+
+audioPlayer.addEventListener("ended",()=>{
+  if(upnext.length>0) playTrackByIndex(0,upnext);
+  else playPauseBtn.textContent="▶";
+});
+
+playPauseBtn.onclick=()=>{if(audioPlayer.paused&&audioPlayer.src){audioPlayer.play();playPauseBtn.textContent="❚❚";}else{audioPlayer.pause();playPauseBtn.textContent="▶";}};
+document.getElementById("nextTrackBtn").onclick=()=>{if(upnext.length>0)playTrackByIndex(0,upnext);};
+document.getElementById("previousTrackBtn").onclick=()=>{if(currentTrackIndex>0)playTrackByIndex(currentTrackIndex-1,currentPlaylist==='liked'?library:playlists[currentPlaylist].tracks);};
+playerVolume.oninput=()=>{audioPlayer.volume=playerVolume.value/100;};
+progressBar.oninput=()=>{if(audioPlayer.duration) audioPlayer.currentTime=(progressBar.value/100)*audioPlayer.duration;};
+audioPlayer.addEventListener("timeupdate",()=>{if(audioPlayer.duration){progressBar.value=(audioPlayer.currentTime/audioPlayer.duration)*100;const m=Math.floor(audioPlayer.currentTime/60);const s=Math.floor(audioPlayer.currentTime%60).toString().padStart(2,"0");currentTrackTime.textContent=m+":"+s;}});
+audioPlayer.addEventListener("loadedmetadata",()=>{const m=Math.floor(audioPlayer.duration/60);const s=Math.floor(audioPlayer.duration%60).toString().padStart(2,"0");currentTrackDuration.textContent=m+":"+s;});
+</script>
+
+</body>
+</html>
